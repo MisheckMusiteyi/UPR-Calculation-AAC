@@ -185,8 +185,8 @@ if uploaded_file is not None:
         df = pd.read_csv(uploaded_file)
 
         required_cols = [
-            'Start_Date', 'End_Date', 'Gross_Premium', 'Reinsurance_premium',
-            'Gross_Commission', 'Reinsurance_Commission', 'Line_of_business'
+            'Start_Date', 'End_Date', 'Gross_Premium', 'Reinsurance_Premium',
+            'Gross_Commission', 'Reinsurance_Commission', 'Line_Of_Business'
         ]
         missing = [col for col in required_cols if col not in df.columns]
         if missing:
@@ -211,7 +211,7 @@ if uploaded_file is not None:
             df["Unearned_portion"] = np.select(conditions, choices, default=np.nan)
 
             df["UPR"] = df["Unearned_portion"] * df["Gross_Premium"]
-            df["RIUPR"] = df["Unearned_portion"] * df["Reinsurance_premium"]
+            df["RIUPR"] = df["Unearned_portion"] * df["Reinsurance_Premium"]
             df["GrossDAC"] = df["Unearned_portion"] * df["Gross_Commission"]
             df["RIDAC"] = df["Unearned_portion"] * df["Reinsurance_Commission"]
 
