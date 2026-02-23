@@ -215,7 +215,7 @@ if uploaded_file is not None:
             df["GrossDAC"] = df["Unearned_portion"] * df["Gross_Commission"]
             df["RIDAC"] = df["Unearned_portion"] * df["Reinsurance_Commission"]
 
-            result = df.groupby('Line_of_business').agg(
+            result = df.groupby('Line_Of_Business').agg(
                 GrossUPR=('UPR', 'sum'),
                 RIUPR=('RIUPR', 'sum'),
                 GrossDAC=('GrossDAC', 'sum'),
