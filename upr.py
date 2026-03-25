@@ -185,12 +185,29 @@ if uploaded_file is not None:
         if missing:
             st.error(f"Missing required columns: {', '.join(missing)}. Please ensure your CSV contains Start_Date, End_Date, and Line_of_business.")
         else:
-            # Convert dates
+            # ----- IMPROVED DATE PARSING WITH ERROR REPORTING -----
+            # Keep a copy of the original date strings for error reporting
+            orig_start = df['Start_Date'].copy()
+            orig_end = df['End_Date'].copy()
+
+            # Convert to datetime, marking unparseable as NaT
             df['Start_Date'] = pd.to_datetime(df['Start_Date'], errors='coerce')
             df['End_Date'] = pd.to_datetime(df['End_Date'], errors='coerce')
-            if df['Start_Date'].isna().any() or df['End_Date'].isna().any():
-                st.error("Some dates could not be parsed. Please check your date columns.")
+
+            # Identify rows where conversion failed
+            bad_start = orig_start[df['Start_Date'].isna() & orig_start.notna()]
+            bad_end = orig_end[df['End_Date'].isna() & orig_end.notna()]
+
+            if not bad_start.empty or not bad_end.empty:
+                st.error("Some date values could not be parsed. Please check your data.")
+                if not bad_start.empty:
+                    st.write("**Invalid Start_Date values (first 10):**")
+                    st.write(bad_start.head(10).tolist())
+                if not bad_end.empty:
+                    st.write("**Invalid End_Date values (first 10):**")
+                    st.write(bad_end.head(10).tolist())
                 st.stop()
+            # -----------------------------------------------------
 
             # Calculate Duration in days
             df["Duration"] = (df["End_Date"] - df["Start_Date"]).dt.days
