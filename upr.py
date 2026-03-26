@@ -156,12 +156,12 @@ with col4:
 
 valuation_date = pd.to_datetime(valuation_date)
 
-# File uploader (now accepts Excel files)
+# File uploader (Excel only)
 uploaded_file = st.file_uploader("Choose an Excel file", type=["xlsx", "xls"])
 
 if uploaded_file is not None:
     try:
-        # Read Excel file (no encoding issues)
+        # Read Excel file
         df = pd.read_excel(uploaded_file)
 
         # Drop unnamed columns
@@ -180,16 +180,13 @@ if uploaded_file is not None:
         if missing:
             st.error(f"Missing required columns: {', '.join(missing)}. Please ensure your Excel file contains Start_Date, End_Date, and Line_of_business.")
         else:
-            # ----- Date parsing with error reporting -----
-            # Keep a copy of the original date strings for error reporting
+            # Date parsing (same as before)
             orig_start = df['Start_Date'].copy()
             orig_end = df['End_Date'].copy()
 
-            # Convert to datetime, marking unparseable as NaT
             df['Start_Date'] = pd.to_datetime(df['Start_Date'], errors='coerce')
             df['End_Date'] = pd.to_datetime(df['End_Date'], errors='coerce')
 
-            # Identify rows where conversion failed
             bad_start = orig_start[df['Start_Date'].isna() & orig_start.notna()]
             bad_end = orig_end[df['End_Date'].isna() & orig_end.notna()]
 
@@ -203,50 +200,21 @@ if uploaded_file is not None:
                     st.write(bad_end.head(10).tolist())
                 st.stop()
 
-            # Calculate Duration in days
+            # Duration and basic filtering
             df["Duration"] = (df["End_Date"] - df["Start_Date"]).dt.days
             if (df["Duration"] <= 0).any():
                 st.warning("Some policies have zero or negative duration. They will be excluded.")
                 df = df[df["Duration"] > 0]
 
-            # -------- Calculate Unearned Portion based on selected method ----------
-            conditions = [
-                valuation_date < df["Start_Date"],
-                valuation_date > df["End_Date"],
-                (valuation_date <= df["End_Date"]) & (valuation_date >= df["Start_Date"])
-            ]
-
-            if method == "365th (exact days)":
-                total = df["Duration"]
-                remaining = (df["End_Date"] - valuation_date).dt.days
-                choices = [1, 0, remaining / total]
-                df["Unearned_portion"] = np.select(conditions, choices, default=np.nan)
-
-            elif method == "24th (half-month)":
-                # Days per half‑month = 365.25 / 24
-                interval_days = 365.25 / 24
-                total = df["Duration"] / interval_days
-                remaining = (df["End_Date"] - valuation_date).dt.days / interval_days
-                choices = [1, 0, remaining / total]
-                df["Unearned_portion"] = np.select(conditions, choices, default=np.nan)
-
-            elif method == "8th (half-quarter)":
-                # Days per half‑quarter = 365.25 / 8
-                interval_days = 365.25 / 8
-                total = df["Duration"] / interval_days
-                remaining = (df["End_Date"] - valuation_date).dt.days / interval_days
-                choices = [1, 0, remaining / total]
-                df["Unearned_portion"] = np.select(conditions, choices, default=np.nan)
-
-            # Identify numeric columns (excluding dates and Line_of_business)
-            exclude = ['Start_Date', 'End_Date', 'Line_of_business', 'Duration', 'Unearned_portion']
+            # Identify numeric columns
+            exclude = ['Start_Date', 'End_Date', 'Line_of_business', 'Duration']
             numeric_candidates = [col for col in df.select_dtypes(include=[np.number]).columns if col not in exclude]
 
             if not numeric_candidates:
                 st.error("No numeric columns found to calculate UPR.")
                 st.stop()
 
-            # Let user select columns to process
+            # Let user select columns
             st.markdown("Select Columns for UPR Calculation")
             default_cols = [c for c in numeric_candidates if c in ['Gross_Premium', 'Reinsurance_premium', 'Gross_Commission', 'Reinsurance_Commission']]
             selected_cols = st.multiselect(
@@ -259,36 +227,67 @@ if uploaded_file is not None:
                 st.warning("Please select at least one numeric column.")
                 st.stop()
 
-            # Calculate UPR for each selected column
-            for col in selected_cols:
-                df[f"{col}_UPR"] = df["Unearned_portion"] * df[col]
+            # --- CALCULATE BUTTON ---
+            if st.button("Calculate UPR"):
+                with st.spinner("Calculating UPR..."):
+                    # Define conditions (common for all methods)
+                    conditions = [
+                        valuation_date < df["Start_Date"],
+                        valuation_date > df["End_Date"],
+                        (valuation_date <= df["End_Date"]) & (valuation_date >= df["Start_Date"])
+                    ]
 
-            # Aggregate by Line of Business
-            upr_columns = [f"{col}_UPR" for col in selected_cols]
-            result = df.groupby('Line_of_business')[upr_columns].sum().reset_index()
+                    # Calculate unearned portion based on selected method
+                    if method == "365th (exact days)":
+                        total = df["Duration"]
+                        remaining = (df["End_Date"] - valuation_date).dt.days
+                        choices = [1, 0, remaining / total]
+                        df["Unearned_portion"] = np.select(conditions, choices, default=np.nan)
 
-            # Display results
-            st.markdown('<div class="card">', unsafe_allow_html=True)
-            st.subheader("UPR Results by Line of Business")
-            st.dataframe(result, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+                    elif method == "24th (half-month)":
+                        interval_days = 365.25 / 24
+                        total = df["Duration"] / interval_days
+                        remaining = (df["End_Date"] - valuation_date).dt.days / interval_days
+                        choices = [1, 0, remaining / total]
+                        df["Unearned_portion"] = np.select(conditions, choices, default=np.nan)
 
-            # Prepare Excel download
-            output = BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                result.to_excel(writer, index=False, sheet_name='UPR_Results')
-            output.seek(0)
+                    elif method == "8th (half-quarter)":
+                        interval_days = 365.25 / 8
+                        total = df["Duration"] / interval_days
+                        remaining = (df["End_Date"] - valuation_date).dt.days / interval_days
+                        choices = [1, 0, remaining / total]
+                        df["Unearned_portion"] = np.select(conditions, choices, default=np.nan)
 
-            # Filename with client name
-            safe_client = "".join(c for c in client_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
-            file_name = f"{safe_client}_UPR_Results.xlsx" if safe_client else "UPR_Results.xlsx"
+                    # Calculate UPR for each selected column
+                    for col in selected_cols:
+                        df[f"{col}_UPR"] = df["Unearned_portion"] * df[col]
 
-            st.download_button(
-                label="Download results as Excel",
-                data=output,
-                file_name=file_name,
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+                    # Aggregate by Line of Business
+                    upr_columns = [f"{col}_UPR" for col in selected_cols]
+                    result = df.groupby('Line_of_business')[upr_columns].sum().reset_index()
+
+                    # Display results
+                    st.markdown('<div class="card">', unsafe_allow_html=True)
+                    st.subheader("UPR Results by Line of Business")
+                    st.dataframe(result, use_container_width=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+                    # Prepare Excel download
+                    output = BytesIO()
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        result.to_excel(writer, index=False, sheet_name='UPR_Results')
+                    output.seek(0)
+
+                    # Filename with client name
+                    safe_client = "".join(c for c in client_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
+                    file_name = f"{safe_client}_UPR_Results.xlsx" if safe_client else "UPR_Results.xlsx"
+
+                    st.download_button(
+                        label="Download results as Excel",
+                        data=output,
+                        file_name=file_name,
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
