@@ -135,7 +135,7 @@ st.markdown("""
 st.markdown("""
 <div class="hero">
     <h1>Unearned Premium Reserve (UPR) Calculator</h1>
-    <p>Upload your premiums schedule CSV. Select the valuation date, choose the numeric columns for which you need the UPR, and enter a client name. The app calculates UPR-equivalent reserves grouped by line of business using the selected method (365th, 24th, or 8th).</p>
+    <p>Upload your premiums schedule Excel File. Select the valuation date, choose the numeric columns for which you need the UPR, and enter a client name. The app calculates UPR-equivalent reserves grouped by line of business using the selected method (365th, 24th, or 8th).</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -157,17 +157,14 @@ with col4:
 valuation_date = pd.to_datetime(valuation_date)
 
 # File uploader
-uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
+uploaded_file = st.file_uploader("Choose an Excel file", type=["xlsx","xls"])
 
 if uploaded_file is not None:
     try:
         # Handle encoding
         try:
-            df = pd.read_csv(uploaded_file, encoding='utf-8')
-        except UnicodeDecodeError:
-            uploaded_file.seek(0)
-            df = pd.read_csv(uploaded_file, encoding='cp1252')
-            st.warning("File read with Windows‑1252 encoding. For best results, save your CSV as UTF‑8.")
+            df = pd.read_excel(uploaded_file)
+        
 
         # Drop unnamed columns
         unnamed = [c for c in df.columns if c.startswith('Unnamed:')]
@@ -183,7 +180,7 @@ if uploaded_file is not None:
         required = ['Start_Date', 'End_Date', 'Line_of_business']
         missing = [col for col in required if col not in df.columns]
         if missing:
-            st.error(f"Missing required columns: {', '.join(missing)}. Please ensure your CSV contains Start_Date, End_Date, and Line_of_business.")
+            st.error(f"Missing required columns: {', '.join(missing)}. Please ensure your Excel File contains Start_Date, End_Date, and Line_of_business.")
         else:
             # ----- IMPROVED DATE PARSING WITH ERROR REPORTING -----
             # Keep a copy of the original date strings for error reporting
