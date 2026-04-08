@@ -19,11 +19,12 @@ st.markdown("""
     }
     
     /* Apply Calisto MT to all text elements, but NOT to icons/font-awesome */
-    body, p, h1, h2, h3, h4, h5, h6, div, span, label, .stMarkdown, 
-    .stTextInput label, .stDateInput label, .stSelectbox label, .stMultiSelect label,
-    .stButton button, .stDownloadButton button, .stFileUploader label,
-    .stExpander, .stAlert, .stInfo, .stWarning, .stError, .stSuccess,
-    .stSpinner, .stProgress, .stToast, .stSidebar, .stMetric {
+    body, p, h1, h2, h3, h4, h5, h6, div:not([data-testid="stExpander"]), 
+    span, label, .stMarkdown, .stTextInput label, .stDateInput label, 
+    .stSelectbox label, .stMultiSelect label, .stButton button, 
+    .stDownloadButton button, .stFileUploader label, .stAlert, .stInfo, 
+    .stWarning, .stError, .stSuccess, .stSpinner, .stProgress, .stToast, 
+    .stSidebar, .stMetric {
         font-family: 'Calisto MT', serif !important;
     }
     
@@ -142,16 +143,20 @@ st.markdown("""
         overflow: hidden;
     }
     
-    /* Fix expander - don't override the icon font */
-    .streamlit-expanderHeader {
+    /* Fix expander - preserve icon font */
+    .stExpander {
+        font-family: 'Calisto MT', serif;
+    }
+    
+    .stExpander button {
         font-family: 'Calisto MT', serif !important;
     }
     
-    /* Ensure icons/icons maintain their original font */
-    [data-testid="stExpander"] svg, 
-    [data-testid="stExpander"] i,
+    /* Ensure expander icons keep their original font */
     .stExpander svg,
-    .stExpander i {
+    .stExpander i,
+    [data-testid="stExpander"] svg,
+    [data-testid="stExpander"] i {
         font-family: initial !important;
     }
     
@@ -231,7 +236,7 @@ if uploaded_file is not None:
             df = df.drop(columns=unnamed)
             st.info(f"Dropped {len(unnamed)} unnamed column(s).")
 
-        # Preview - FIXED: Use a simpler approach without custom CSS interference
+        # Preview - Use a simple markdown header
         st.markdown("#### 📊 Preview of uploaded data")
         st.dataframe(df.head())
 
@@ -248,7 +253,7 @@ if uploaded_file is not None:
         
         # Create a container for required column mapping
         with st.container():
-            st.markdown("Required Columns")
+            st.markdown("**Required Columns**")
             
             # Get all column names for selection
             all_columns = df.columns.tolist()
@@ -278,7 +283,7 @@ if uploaded_file is not None:
                 )
 
         # Numeric columns selection
-        st.markdown("Numeric Columns for UPR Calculation")
+        st.markdown("**Numeric Columns for UPR Calculation**")
         st.markdown("Select which numeric columns (premiums, commissions, etc.) you want to calculate UPR for:")
         
         numeric_columns = df.select_dtypes(include=[np.number]).columns.tolist()
@@ -303,8 +308,9 @@ if uploaded_file is not None:
             st.warning("Please select at least one numeric column for UPR calculation.")
             st.stop()
 
-        # Show mapping summary
-        with st.expander("View Column Mapping Summary"):
+        # Show mapping summary - REPLACED EXPANDER WITH A BUTTON
+        st.markdown("---")
+        if st.button("📋 View Column Mapping Summary", use_container_width=False):
             mapping_data = {
                 'Required Field': ['Start Date', 'End Date', 'Line of Business'],
                 'Your Column': [start_date_col, end_date_col, lob_col],
@@ -316,6 +322,11 @@ if uploaded_file is not None:
             }
             mapping_df = pd.DataFrame(mapping_data)
             st.dataframe(mapping_df, use_container_width=True)
+            
+            if selected_value_cols:
+                st.markdown("**Selected numeric columns for UPR calculation:**")
+                st.write(selected_value_cols)
+        st.markdown("---")
 
         # --- Rename columns for internal processing ---
         df_processed = df.rename(columns={
