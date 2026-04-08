@@ -280,8 +280,8 @@ if uploaded_file is not None:
             mapping_df = pd.DataFrame(mapping_data)
             st.dataframe(mapping_df, use_container_width=True)
             
-            st.markdown("**Selected numeric columns for UPR calculation:**")
-            st.write(selected_value_cols)
+            #st.markdown("**Selected numeric columns for UPR calculation:**")
+            #st.write(selected_value_cols)
 
         # --- Rename columns for internal processing ---
         df_processed = df.rename(columns={
