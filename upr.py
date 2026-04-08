@@ -10,13 +10,18 @@ st.set_page_config(page_title="UPR Calculator", layout="wide")
 # ---------- CUSTOM CSS (African Actuarial Consultants theme) ----------
 st.markdown("""
 <style>
-    /* Global */
+    /* Global - Force Calisto MT on ALL elements */
+    * {
+        font-family: 'Calisto MT', serif !important;
+    }
+    
     .stApp {
         background-color: #FFFFFF;
         color: #000000;
         font-family: 'Calisto MT', serif;
         font-size: 11pt;
     }
+    
     /* Header / Navigation */
     .header {
         background-color: #000000;
@@ -32,10 +37,12 @@ st.markdown("""
         text-decoration: none;
         font-weight: 500;
         transition: color 0.3s;
+        font-family: 'Calisto MT', serif;
     }
     .nav-links a:hover {
         color: #D4AF37;
     }
+    
     /* Hero Section */
     .hero {
         background: linear-gradient(135deg, #000000 0%, #333333 100%);
@@ -48,18 +55,22 @@ st.markdown("""
         color: #D4AF37;
         font-size: 2.5rem;
         margin-bottom: 0.5rem;
+        font-family: 'Calisto MT', serif;
     }
     .hero p {
         font-size: 1.2rem;
         max-width: 800px;
         margin: 0 auto;
+        font-family: 'Calisto MT', serif;
     }
+    
     /* Main container */
     .main-container {
         max-width: 1400px;
         margin: 2rem auto;
         padding: 0 2rem;
     }
+    
     /* Cards */
     .card {
         background-color: #F9F9F9;
@@ -74,7 +85,9 @@ st.markdown("""
         margin-top: 0;
         border-bottom: 2px solid #D4AF37;
         padding-bottom: 0.5rem;
+        font-family: 'Calisto MT', serif;
     }
+    
     /* Footer */
     .footer {
         background-color: #000000;
@@ -87,7 +100,9 @@ st.markdown("""
     .footer a {
         color: #D4AF37;
         text-decoration: none;
+        font-family: 'Calisto MT', serif;
     }
+    
     /* Streamlit element overrides */
     .stButton > button, .stDownloadButton > button {
         background-color: #D4AF37;
@@ -97,29 +112,40 @@ st.markdown("""
         font-weight: bold;
         padding: 0.5rem 1rem;
         transition: all 0.3s;
+        font-family: 'Calisto MT', serif !important;
     }
     .stButton > button:hover, .stDownloadButton > button:hover {
         background-color: #B8960F;
         color: #FFFFFF;
     }
+    
     .stFileUploader {
         border: 2px dashed #D4AF37;
         border-radius: 5px;
         padding: 1rem;
     }
-    .stMultiSelect [data-baseweb="select"] {
-        border: 1px solid #D4AF37;
-        border-radius: 4px;
-    }
+    
+    .stMultiSelect [data-baseweb="select"], 
     .stSelectbox [data-baseweb="select"] {
         border: 1px solid #D4AF37;
         border-radius: 4px;
     }
+    
     .dataframe {
         border: 1px solid #D4AF37;
         border-radius: 8px;
         overflow: hidden;
     }
+    
+    /* Force font on all Streamlit widgets */
+    .stMarkdown, .stMarkdown p, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3,
+    .stTextInput label, .stDateInput label, .stSelectbox label, .stMultiSelect label,
+    .stButton button, .stDownloadButton button, .stFileUploader label,
+    .stExpander, .stAlert, .stInfo, .stWarning, .stError, .stSuccess {
+        font-family: 'Calisto MT', serif !important;
+    }
+    
+    /* Required badge */
     .required-badge {
         background-color: #D4AF37;
         color: #000000;
@@ -129,6 +155,7 @@ st.markdown("""
         font-weight: bold;
         display: inline-block;
         margin-left: 8px;
+        font-family: 'Calisto MT', serif;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -279,9 +306,6 @@ if uploaded_file is not None:
             }
             mapping_df = pd.DataFrame(mapping_data)
             st.dataframe(mapping_df, use_container_width=True)
-            
-            #st.markdown("**Selected numeric columns for UPR calculation:**")
-            #st.write(selected_value_cols)
 
         # --- Rename columns for internal processing ---
         df_processed = df.rename(columns={
