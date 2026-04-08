@@ -139,7 +139,7 @@ st.markdown("""
 st.markdown("""
 <div class="hero">
     <h1>Unearned Premium Reserve (UPR) Calculator</h1>
-    <p>Upload your Excel file. Map your columns to the required fields (Start Date, End Date, Line of Business, and numeric columns). The app calculates UPR-equivalent reserves grouped by line of business using the selected method (365th, 24th, or 8th).</p>
+    <p>Upload your CSV or Excel file. Map your columns to the required fields (Start Date, End Date, Line of Business, and numeric columns). The app calculates UPR-equivalent reserves grouped by line of business using the selected method (365th, 24th, or 8th).</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -160,13 +160,24 @@ with col4:
 
 valuation_date = pd.to_datetime(valuation_date)
 
-# File uploader (Excel only)
-uploaded_file = st.file_uploader("Choose an Excel file", type=["xlsx", "xls"])
+# File uploader (now accepts CSV and Excel)
+uploaded_file = st.file_uploader("Choose a file", type=["csv", "xlsx", "xls"])
 
 if uploaded_file is not None:
     try:
-        # Read Excel file
-        df = pd.read_excel(uploaded_file)
+        # Read file based on extension
+        file_extension = uploaded_file.name.split('.')[-1].lower()
+        
+        if file_extension == 'csv':
+            # Try different encodings for CSV
+            try:
+                df = pd.read_csv(uploaded_file, encoding='utf-8')
+            except UnicodeDecodeError:
+                uploaded_file.seek(0)
+                df = pd.read_csv(uploaded_file, encoding='cp1252')
+                st.info("File read with Windows-1252 encoding.")
+        else:  # Excel files
+            df = pd.read_excel(uploaded_file)
 
         # Drop unnamed columns
         unnamed = [c for c in df.columns if c.startswith('Unnamed:')]
@@ -185,8 +196,16 @@ if uploaded_file is not None:
         col_mapping_col1, col_mapping_col2 = st.columns(2)
 
         with col_mapping_col1:
-            # Date columns
-            date_columns = df.select_dtypes(include=['datetime64', 'object']).columns.tolist()
+            # Date columns (identify columns that might contain dates)
+            potential_date_cols = df.select_dtypes(include=['datetime64']).columns.tolist()
+            # Also include object columns that might be dates
+            object_cols = df.select_dtypes(include=['object']).columns.tolist()
+            date_columns = potential_date_cols + object_cols
+            
+            if not date_columns:
+                st.warning("No date-like columns detected. Please ensure your date columns are properly formatted.")
+                date_columns = df.columns.tolist()
+            
             start_date_col = st.selectbox("Start Date Column", options=date_columns, key="start_date")
             end_date_col = st.selectbox("End Date Column", options=date_columns, key="end_date")
             
@@ -328,7 +347,7 @@ if uploaded_file is not None:
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
-        st.write("Please check your Excel file format and column selections.")
+        st.write("Please check your file format and column selections.")
 
 st.markdown('</div>', unsafe_allow_html=True)  # close main-container
 
