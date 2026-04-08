@@ -10,16 +10,21 @@ st.set_page_config(page_title="UPR Calculator", layout="wide")
 # ---------- CUSTOM CSS (African Actuarial Consultants theme) ----------
 st.markdown("""
 <style>
-    /* Global - Force Calisto MT on ALL elements */
-    * {
-        font-family: 'Calisto MT', serif !important;
-    }
-    
+    /* Global - Force Calisto MT on text elements only */
     .stApp {
         background-color: #FFFFFF;
         color: #000000;
         font-family: 'Calisto MT', serif;
         font-size: 11pt;
+    }
+    
+    /* Apply Calisto MT to all text elements, but NOT to icons/font-awesome */
+    body, p, h1, h2, h3, h4, h5, h6, div, span, label, .stMarkdown, 
+    .stTextInput label, .stDateInput label, .stSelectbox label, .stMultiSelect label,
+    .stButton button, .stDownloadButton button, .stFileUploader label,
+    .stExpander, .stAlert, .stInfo, .stWarning, .stError, .stSuccess,
+    .stSpinner, .stProgress, .stToast, .stSidebar, .stMetric {
+        font-family: 'Calisto MT', serif !important;
     }
     
     /* Header / Navigation */
@@ -137,12 +142,17 @@ st.markdown("""
         overflow: hidden;
     }
     
-    /* Force font on all Streamlit widgets */
-    .stMarkdown, .stMarkdown p, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3,
-    .stTextInput label, .stDateInput label, .stSelectbox label, .stMultiSelect label,
-    .stButton button, .stDownloadButton button, .stFileUploader label,
-    .stExpander, .stAlert, .stInfo, .stWarning, .stError, .stSuccess {
+    /* Fix expander - don't override the icon font */
+    .streamlit-expanderHeader {
         font-family: 'Calisto MT', serif !important;
+    }
+    
+    /* Ensure icons/icons maintain their original font */
+    [data-testid="stExpander"] svg, 
+    [data-testid="stExpander"] i,
+    .stExpander svg,
+    .stExpander i {
+        font-family: initial !important;
     }
     
     /* Required badge */
@@ -221,9 +231,9 @@ if uploaded_file is not None:
             df = df.drop(columns=unnamed)
             st.info(f"Dropped {len(unnamed)} unnamed column(s).")
 
-        # Preview
-        with st.expander("Preview of uploaded data"):
-            st.dataframe(df.head())
+        # Preview - FIXED: Use a simpler approach without custom CSS interference
+        st.markdown("#### 📊 Preview of uploaded data")
+        st.dataframe(df.head())
 
         # --- Column Mapping Section ---
         st.markdown("### Map Your Columns to Required Fields")
