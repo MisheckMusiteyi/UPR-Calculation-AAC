@@ -120,6 +120,16 @@ st.markdown("""
         border-radius: 8px;
         overflow: hidden;
     }
+    .required-badge {
+        background-color: #D4AF37;
+        color: #000000;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 10pt;
+        font-weight: bold;
+        display: inline-block;
+        margin-left: 8px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -139,7 +149,7 @@ st.markdown("""
 st.markdown("""
 <div class="hero">
     <h1>Unearned Premium Reserve (UPR) Calculator</h1>
-    <p>Upload your CSV or Excel file. Map your columns to the required fields (Start Date, End Date, Line of Business, and numeric columns). The app calculates UPR-equivalent reserves grouped by line of business using the selected method (365th, 24th, or 8th).</p>
+    <p>Upload your CSV or Excel file. Map your columns to the required fields below. The app calculates UPR-equivalent reserves grouped by line of business using the selected method (365th, 24th, or 8th).</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -160,7 +170,7 @@ with col4:
 
 valuation_date = pd.to_datetime(valuation_date)
 
-# File uploader (now accepts CSV and Excel)
+# File uploader
 uploaded_file = st.file_uploader("Choose a file", type=["csv", "xlsx", "xls"])
 
 if uploaded_file is not None:
@@ -169,14 +179,13 @@ if uploaded_file is not None:
         file_extension = uploaded_file.name.split('.')[-1].lower()
         
         if file_extension == 'csv':
-            # Try different encodings for CSV
             try:
                 df = pd.read_csv(uploaded_file, encoding='utf-8')
             except UnicodeDecodeError:
                 uploaded_file.seek(0)
                 df = pd.read_csv(uploaded_file, encoding='cp1252')
                 st.info("File read with Windows-1252 encoding.")
-        else:  # Excel files
+        else:
             df = pd.read_excel(uploaded_file)
 
         # Drop unnamed columns
@@ -190,39 +199,65 @@ if uploaded_file is not None:
             st.dataframe(df.head())
 
         # --- Column Mapping Section ---
-        st.markdown("### Map Your Columns")
-        st.markdown("Select which columns in your data correspond to the required fields:")
+        st.markdown("### Map Your Columns to Required Fields")
+        st.markdown("The calculator requires the following columns. Please select which column in your data corresponds to each required field:")
 
-        col_mapping_col1, col_mapping_col2 = st.columns(2)
-
-        with col_mapping_col1:
-            # Date columns (identify columns that might contain dates)
-            potential_date_cols = df.select_dtypes(include=['datetime64']).columns.tolist()
-            # Also include object columns that might be dates
-            object_cols = df.select_dtypes(include=['object']).columns.tolist()
-            date_columns = potential_date_cols + object_cols
+        # Display required columns in a structured way
+        required_fields = {
+            'Start Date': 'The date when the policy starts (origin period)',
+            'End Date': 'The date when the policy ends (development period)',
+            'Line of Business': 'The category/segment for grouping results (e.g., Motor, Property, Health)'
+        }
+        
+        # Create a container for required column mapping
+        with st.container():
+            st.markdown("#### Required Columns")
             
-            if not date_columns:
-                st.warning("No date-like columns detected. Please ensure your date columns are properly formatted.")
-                date_columns = df.columns.tolist()
-            
-            start_date_col = st.selectbox("Start Date Column", options=date_columns, key="start_date")
-            end_date_col = st.selectbox("End Date Column", options=date_columns, key="end_date")
-            
-            # Line of Business column
+            # Get all column names for selection
             all_columns = df.columns.tolist()
-            lob_col = st.selectbox("Line of Business Column", options=all_columns, key="lob")
+            
+            # Create three columns for the required mappings
+            req_col1, req_col2, req_col3 = st.columns(3)
+            
+            with req_col1:
+                start_date_col = st.selectbox(
+                    "**Start Date** \n*Policy start date*", 
+                    options=all_columns,
+                    key="start_date"
+                )
+            
+            with req_col2:
+                end_date_col = st.selectbox(
+                    "**End Date** \n*Policy end date*", 
+                    options=all_columns,
+                    key="end_date"
+                )
+            
+            with req_col3:
+                lob_col = st.selectbox(
+                    "**Line of Business** \n*Grouping category*", 
+                    options=all_columns,
+                    key="lob"
+                )
 
-        with col_mapping_col2:
-            # Numeric columns for UPR calculation
-            numeric_columns = df.select_dtypes(include=[np.number]).columns.tolist()
-            st.markdown("**Select columns for UPR calculation:**")
-            selected_value_cols = st.multiselect(
-                "Choose the numeric columns (premiums, commissions, etc.) for which you want the UPR:",
-                options=numeric_columns,
-                default=numeric_columns[:min(4, len(numeric_columns))] if numeric_columns else []
-            )
+        # Numeric columns selection
+        st.markdown("####Numeric Columns for UPR Calculation")
+        st.markdown("Select which numeric columns (premiums, commissions, etc.) you want to calculate UPR for:")
+        
+        numeric_columns = df.select_dtypes(include=[np.number]).columns.tolist()
+        
+        if not numeric_columns:
+            st.error("No numeric columns found in your data. Please ensure your file contains numeric columns for UPR calculation.")
+            st.stop()
+        
+        selected_value_cols = st.multiselect(
+            "**Select numeric columns**\n*Choose all columns that contain amounts you want to convert to UPR*",
+            options=numeric_columns,
+            default=numeric_columns[:min(4, len(numeric_columns))] if numeric_columns else [],
+            help="Examples: Gross Premium, Reinsurance Premium, Commission amounts, etc."
+        )
 
+        # Validate mappings
         if not start_date_col or not end_date_col or not lob_col:
             st.error("Please map all required columns (Start Date, End Date, Line of Business).")
             st.stop()
@@ -231,6 +266,23 @@ if uploaded_file is not None:
             st.warning("Please select at least one numeric column for UPR calculation.")
             st.stop()
 
+        # Show mapping summary
+        with st.expander("View Column Mapping Summary"):
+            mapping_data = {
+                'Required Field': ['Start Date', 'End Date', 'Line of Business'],
+                'Your Column': [start_date_col, end_date_col, lob_col],
+                'Description': [
+                    'Policy start date (origin period)',
+                    'Policy end date (development period)',
+                    'Category for grouping results'
+                ]
+            }
+            mapping_df = pd.DataFrame(mapping_data)
+            st.dataframe(mapping_df, use_container_width=True)
+            
+            st.markdown("**Selected numeric columns for UPR calculation:**")
+            st.write(selected_value_cols)
+
         # --- Rename columns for internal processing ---
         df_processed = df.rename(columns={
             start_date_col: 'Start_Date',
@@ -238,7 +290,7 @@ if uploaded_file is not None:
             lob_col: 'Line_of_business'
         })
 
-        # Keep original numeric column names for reference
+        # Keep original numeric column names
         original_value_cols = selected_value_cols
 
         # --- Date parsing with error reporting ---
@@ -274,9 +326,9 @@ if uploaded_file is not None:
             st.stop()
 
         # --- CALCULATE BUTTON ---
-        if st.button("Calculate UPR"):
+        if st.button("Calculate UPR", use_container_width=True):
             with st.spinner("Calculating UPR..."):
-                # Define conditions (common for all methods)
+                # Define conditions
                 conditions = [
                     valuation_date < df_processed["Start_Date"],
                     valuation_date > df_processed["End_Date"],
@@ -312,14 +364,14 @@ if uploaded_file is not None:
                 upr_columns = [f"{col}_UPR" for col in original_value_cols]
                 result = df_processed.groupby('Line_of_business')[upr_columns].sum().reset_index()
                 
-                # Rename result columns to be more readable (remove _UPR suffix for clarity)
+                # Rename result columns
                 result.columns = ['Line_of_business'] + [col.replace('_UPR', '') for col in upr_columns]
 
                 # Display results
                 st.markdown('<div class="card">', unsafe_allow_html=True)
                 st.subheader("UPR Results by Line of Business")
                 
-                # Format for display (add thousand separators)
+                # Format for display
                 display_result = result.copy()
                 for col in display_result.columns:
                     if col != 'Line_of_business':
@@ -349,7 +401,7 @@ if uploaded_file is not None:
         st.error(f"An error occurred: {e}")
         st.write("Please check your file format and column selections.")
 
-st.markdown('</div>', unsafe_allow_html=True)  # close main-container
+st.markdown('</div>', unsafe_allow_html=True)
 
 # ---------- Footer ----------
 st.markdown("""
