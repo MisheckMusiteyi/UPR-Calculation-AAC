@@ -237,7 +237,7 @@ if uploaded_file is not None:
             st.info(f"Dropped {len(unnamed)} unnamed column(s).")
 
         # Preview - FIXED: Removed expander to avoid arrow overlay issue
-        st.markdown("#### 📊 Preview of uploaded data")
+        st.markdown("#### Preview of uploaded data")
         st.dataframe(df.head())
         st.markdown("---")
 
@@ -254,7 +254,7 @@ if uploaded_file is not None:
         with req_col1:
             st.markdown("""
             <div class="required-container">
-                <h3>📅 Start_Date</h3>
+                <h3>Start_Date</h3>
                 <p>The date when the policy starts (origin period)</p>
             </div>
             """, unsafe_allow_html=True)
@@ -270,7 +270,7 @@ if uploaded_file is not None:
         with req_col2:
             st.markdown("""
             <div class="required-container">
-                <h3>📅 End_Date</h3>
+                <h3>End_Date</h3>
                 <p>The date when the policy ends (development period)</p>
             </div>
             """, unsafe_allow_html=True)
@@ -286,8 +286,8 @@ if uploaded_file is not None:
         with req_col3:
             st.markdown("""
             <div class="required-container">
-                <h3>🏷️ Line_of_Business</h3>
-                <p>The category/segment for grouping results (e.g., Motor, Property, Health)</p>
+                <h3>Line_of_Business</h3>
+                <p>The category/segment for grouping results (e.g., Motor, Property, Agriculture)</p>
             </div>
             """, unsafe_allow_html=True)
             lob_col = st.selectbox(
@@ -320,15 +320,15 @@ if uploaded_file is not None:
 
         # Validate mappings
         if not start_date_col or not end_date_col or not lob_col:
-            st.error("⚠️ Please map all required columns (Start_Date, End_Date, Line_of_Business).")
+            st.error("Please map all required columns (Start_Date, End_Date, Line_of_Business).")
             st.stop()
         
         if not selected_value_cols:
-            st.warning("⚠️ Please select at least one numeric column for UPR calculation.")
+            st.warning("Please select at least one numeric column for UPR calculation.")
             st.stop()
 
         # Show mapping summary button
-        if st.button("📋 View Column Mapping Summary", use_container_width=False):
+        if st.button("View Column Mapping Summary", use_container_width=False):
             mapping_data = {
                 'Required Field': ['Start_Date', 'End_Date', 'Line_of_Business'],
                 'Your Column': [start_date_col, end_date_col, lob_col],
@@ -388,7 +388,7 @@ if uploaded_file is not None:
             st.stop()
 
         # --- CALCULATE BUTTON ---
-        if st.button("🚀 Calculate UPR", use_container_width=True):
+        if st.button("Calculate UPR", use_container_width=True):
             with st.spinner("Calculating UPR..."):
                 # Define conditions
                 conditions = [
@@ -431,7 +431,7 @@ if uploaded_file is not None:
 
                 # Display results
                 st.markdown('<div class="card">', unsafe_allow_html=True)
-                st.subheader("📊 UPR Results by Line of Business")
+                st.subheader("UPR Results by Line of Business")
                 
                 # Format for display
                 display_result = result.copy()
@@ -453,7 +453,7 @@ if uploaded_file is not None:
                 file_name = f"{safe_client}_UPR_Results.xlsx" if safe_client else "UPR_Results.xlsx"
 
                 st.download_button(
-                    label="📥 Download results as Excel",
+                    label="Download results as Excel",
                     data=output,
                     file_name=file_name,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
