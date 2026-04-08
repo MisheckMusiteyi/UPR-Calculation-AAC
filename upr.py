@@ -308,26 +308,6 @@ if uploaded_file is not None:
             st.warning("Please select at least one numeric column for UPR calculation.")
             st.stop()
 
-        # Show mapping summary - REPLACED EXPANDER WITH A BUTTON
-        st.markdown("---")
-        if st.button("View Column Mapping Summary", use_container_width=False):
-            mapping_data = {
-                'Required Field': ['Start Date', 'End Date', 'Line of Business'],
-                'Your Column': [start_date_col, end_date_col, lob_col],
-                'Description': [
-                    'Policy start date (origin period)',
-                    'Policy end date (development period)',
-                    'Category for grouping results'
-                ]
-            }
-            mapping_df = pd.DataFrame(mapping_data)
-            st.dataframe(mapping_df, use_container_width=True)
-            
-            if selected_value_cols:
-                st.markdown("**Selected numeric columns for UPR calculation:**")
-                st.write(selected_value_cols)
-        st.markdown("---")
-
         # --- Rename columns for internal processing ---
         df_processed = df.rename(columns={
             start_date_col: 'Start_Date',
