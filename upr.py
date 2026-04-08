@@ -237,23 +237,23 @@ if uploaded_file is not None:
             st.info(f"Dropped {len(unnamed)} unnamed column(s).")
 
         # Preview - Use a simple markdown header
-        st.markdown("#### 📊 Preview of uploaded data")
+        st.markdown("Preview of uploaded data")
         st.dataframe(df.head())
 
         # --- Column Mapping Section ---
-        st.markdown("### Map Your Columns to Required Fields")
+        st.markdown("Map Your Columns to Required Fields")
         st.markdown("The calculator requires the following columns. Please select which column in your data corresponds to each required field:")
 
         # Display required columns in a structured way
         required_fields = {
-            'Start Date': 'The date when the policy starts (origin period)',
-            'End Date': 'The date when the policy ends (development period)',
-            'Line of Business': 'The category/segment for grouping results (e.g., Motor, Property, Health)'
+            'Start Date': 'The date when the policy starts',
+            'End Date': 'The date when the policy ends',
+            'Line of Business': 'The category/segment for grouping results (e.g., Motor, Property, Agriculture)'
         }
         
         # Create a container for required column mapping
         with st.container():
-            st.markdown("**Required Columns**")
+            st.markdown("Required Columns")
             
             # Get all column names for selection
             all_columns = df.columns.tolist()
@@ -310,7 +310,7 @@ if uploaded_file is not None:
 
         # Show mapping summary - REPLACED EXPANDER WITH A BUTTON
         st.markdown("---")
-        if st.button("📋 View Column Mapping Summary", use_container_width=False):
+        if st.button("View Column Mapping Summary", use_container_width=False):
             mapping_data = {
                 'Required Field': ['Start Date', 'End Date', 'Line of Business'],
                 'Your Column': [start_date_col, end_date_col, lob_col],
