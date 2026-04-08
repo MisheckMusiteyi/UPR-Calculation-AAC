@@ -211,7 +211,7 @@ if uploaded_file is not None:
         
         # Create a container for required column mapping
         with st.container():
-            st.markdown("#### Required Columns")
+            st.markdown("Required Columns")
             
             # Get all column names for selection
             all_columns = df.columns.tolist()
@@ -241,7 +241,7 @@ if uploaded_file is not None:
                 )
 
         # Numeric columns selection
-        st.markdown("####Numeric Columns for UPR Calculation")
+        st.markdown("Numeric Columns for UPR Calculation")
         st.markdown("Select which numeric columns (premiums, commissions, etc.) you want to calculate UPR for:")
         
         numeric_columns = df.select_dtypes(include=[np.number]).columns.tolist()
