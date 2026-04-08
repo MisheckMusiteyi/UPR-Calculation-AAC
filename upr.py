@@ -76,6 +76,29 @@ st.markdown("""
         padding: 0 2rem;
     }
     
+    /* Required Column Containers */
+    .required-container {
+        background-color: #F9F9F9;
+        border: 2px solid #D4AF37;
+        border-radius: 10px;
+        padding: 1rem;
+        text-align: center;
+        height: 100%;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .required-container h3 {
+        color: #D4AF37;
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+        font-size: 1.2rem;
+        font-weight: bold;
+    }
+    .required-container p {
+        color: #666666;
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+    }
+    
     /* Cards */
     .card {
         background-color: #F9F9F9;
@@ -149,19 +172,6 @@ st.markdown("""
     [data-testid="stExpander"] i {
         font-family: initial !important;
     }
-    
-    /* Required badge */
-    .required-badge {
-        background-color: #D4AF37;
-        color: #000000;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 10pt;
-        font-weight: bold;
-        display: inline-block;
-        margin-left: 8px;
-        font-family: 'Calisto MT', serif;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -227,46 +237,71 @@ if uploaded_file is not None:
             st.info(f"Dropped {len(unnamed)} unnamed column(s).")
 
         # Preview
-        st.markdown("Preview of uploaded data")
-        st.dataframe(df.head())
+        with st.expander("Preview of uploaded data"):
+            st.dataframe(df.head())
 
-        # --- Column Mapping Section ---
+        # --- Column Mapping Section with Visual Containers ---
         st.markdown("### Map Your Columns to Required Fields")
-        st.markdown("The calculator requires the following columns. Please select which column in your data corresponds to each required field:")
+        st.markdown("The calculator requires the following columns. For each required column, select the corresponding column from your uploaded data:")
 
-        # Create a container for required column mapping
-        with st.container():
-            st.markdown("**Required Columns**")
-            
-            # Get all column names for selection
-            all_columns = df.columns.tolist()
-            
-            # Create three columns for the required mappings
-            req_col1, req_col2, req_col3 = st.columns(3)
-            
-            with req_col1:
-                start_date_col = st.selectbox(
-                    "**Start Date**  \n*Policy start date*", 
-                    options=all_columns,
-                    key="start_date"
-                )
-            
-            with req_col2:
-                end_date_col = st.selectbox(
-                    "**End Date**  \n*Policy end date*", 
-                    options=all_columns,
-                    key="end_date"
-                )
-            
-            with req_col3:
-                lob_col = st.selectbox(
-                    "**Line of Business**  \n*Grouping category*", 
-                    options=all_columns,
-                    key="lob"
-                )
+        # Get all column names for selection
+        all_columns = df.columns.tolist()
+        
+        # Create three columns for the required mappings with visual containers
+        req_col1, req_col2, req_col3 = st.columns(3)
+        
+        with req_col1:
+            st.markdown("""
+            <div class="required-container">
+                <h3>Start_Date</h3>
+                <p>The date when the policy starts (origin period)</p>
+            </div>
+            """, unsafe_allow_html=True)
+            start_date_col = st.selectbox(
+                "Select your Start Date column",
+                options=[""] + all_columns,
+                key="start_date",
+                label_visibility="collapsed"
+            )
+            if start_date_col == "":
+                start_date_col = None
+        
+        with req_col2:
+            st.markdown("""
+            <div class="required-container">
+                <h3>End_Date</h3>
+                <p>The date when the policy ends (development period)</p>
+            </div>
+            """, unsafe_allow_html=True)
+            end_date_col = st.selectbox(
+                "Select your End Date column",
+                options=[""] + all_columns,
+                key="end_date",
+                label_visibility="collapsed"
+            )
+            if end_date_col == "":
+                end_date_col = None
+        
+        with req_col3:
+            st.markdown("""
+            <div class="required-container">
+                <h3>Line_of_Business</h3>
+                <p>The category/segment for grouping results (e.g., Motor, Property, Health)</p>
+            </div>
+            """, unsafe_allow_html=True)
+            lob_col = st.selectbox(
+                "Select your Line of Business column",
+                options=[""] + all_columns,
+                key="lob",
+                label_visibility="collapsed"
+            )
+            if lob_col == "":
+                lob_col = None
+
+        st.markdown("---")
 
         # Numeric columns selection
-        st.markdown("**Numeric Columns for UPR Calculation**")
+        st.markdown("### Select Numeric Columns for UPR Calculation")
         st.markdown("Select which numeric columns (premiums, commissions, etc.) you want to calculate UPR for:")
         
         numeric_columns = df.select_dtypes(include=[np.number]).columns.tolist()
@@ -276,7 +311,7 @@ if uploaded_file is not None:
             st.stop()
         
         selected_value_cols = st.multiselect(
-            "**Select numeric columns**  \n*Choose all columns that contain amounts you want to convert to UPR*",
+            "Choose the numeric columns you want to convert to UPR:",
             options=numeric_columns,
             default=numeric_columns[:min(4, len(numeric_columns))] if numeric_columns else [],
             help="Examples: Gross Premium, Reinsurance Premium, Commission amounts, etc."
@@ -284,7 +319,7 @@ if uploaded_file is not None:
 
         # Validate mappings
         if not start_date_col or not end_date_col or not lob_col:
-            st.error("Please map all required columns (Start Date, End Date, Line of Business).")
+            st.error("Please map all required columns (Start_Date, End_Date, Line_of_Business).")
             st.stop()
         
         if not selected_value_cols:
@@ -292,10 +327,9 @@ if uploaded_file is not None:
             st.stop()
 
         # Show mapping summary button
-        st.markdown("---")
         if st.button("View Column Mapping Summary", use_container_width=False):
             mapping_data = {
-                'Required Field': ['Start Date', 'End Date', 'Line of Business'],
+                'Required Field': ['Start_Date', 'End_Date', 'Line_of_Business'],
                 'Your Column': [start_date_col, end_date_col, lob_col],
                 'Description': [
                     'Policy start date (origin period)',
@@ -309,7 +343,6 @@ if uploaded_file is not None:
             if selected_value_cols:
                 st.markdown("**Selected numeric columns for UPR calculation:**")
                 st.write(selected_value_cols)
-        st.markdown("---")
 
         # --- Rename columns for internal processing ---
         df_processed = df.rename(columns={
@@ -419,7 +452,7 @@ if uploaded_file is not None:
                 file_name = f"{safe_client}_UPR_Results.xlsx" if safe_client else "UPR_Results.xlsx"
 
                 st.download_button(
-                    label="📥 Download results as Excel",
+                    label="Download results as Excel",
                     data=output,
                     file_name=file_name,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
