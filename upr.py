@@ -10,7 +10,7 @@ st.set_page_config(page_title="UPR Calculator", layout="wide")
 # ---------- CUSTOM CSS (African Actuarial Consultants theme) ----------
 st.markdown("""
 <style>
-    /* Global - Force Calisto MT on text elements only */
+    /* Global */
     .stApp {
         background-color: #FFFFFF;
         color: #000000;
@@ -18,13 +18,12 @@ st.markdown("""
         font-size: 11pt;
     }
     
-    /* Apply Calisto MT to all text elements, but NOT to icons/font-awesome */
-    body, p, h1, h2, h3, h4, h5, h6, div:not([data-testid="stExpander"]), 
-    span, label, .stMarkdown, .stTextInput label, .stDateInput label, 
-    .stSelectbox label, .stMultiSelect label, .stButton button, 
-    .stDownloadButton button, .stFileUploader label, .stAlert, .stInfo, 
-    .stWarning, .stError, .stSuccess, .stSpinner, .stProgress, .stToast, 
-    .stSidebar, .stMetric {
+    /* Apply Calisto MT to all text elements */
+    body, p, h1, h2, h3, h4, h5, h6, div, span, label, .stMarkdown, 
+    .stTextInput label, .stDateInput label, .stSelectbox label, .stMultiSelect label,
+    .stButton button, .stDownloadButton button, .stFileUploader label,
+    .stAlert, .stInfo, .stWarning, .stError, .stSuccess, .stSpinner, 
+    .stProgress, .stToast, .stSidebar, .stMetric, .stExpander {
         font-family: 'Calisto MT', serif !important;
     }
     
@@ -143,15 +142,6 @@ st.markdown("""
         overflow: hidden;
     }
     
-    /* Fix expander - preserve icon font */
-    .stExpander {
-        font-family: 'Calisto MT', serif;
-    }
-    
-    .stExpander button {
-        font-family: 'Calisto MT', serif !important;
-    }
-    
     /* Ensure expander icons keep their original font */
     .stExpander svg,
     .stExpander i,
@@ -236,24 +226,17 @@ if uploaded_file is not None:
             df = df.drop(columns=unnamed)
             st.info(f"Dropped {len(unnamed)} unnamed column(s).")
 
-        # Preview - Use a simple markdown header
+        # Preview
         st.markdown("Preview of uploaded data")
         st.dataframe(df.head())
 
         # --- Column Mapping Section ---
-        st.markdown("Map Your Columns to Required Fields")
+        st.markdown("### Map Your Columns to Required Fields")
         st.markdown("The calculator requires the following columns. Please select which column in your data corresponds to each required field:")
 
-        # Display required columns in a structured way
-        required_fields = {
-            'Start Date': 'The date when the policy starts',
-            'End Date': 'The date when the policy ends',
-            'Line of Business': 'The category/segment for grouping results (e.g., Motor, Property, Agriculture)'
-        }
-        
         # Create a container for required column mapping
         with st.container():
-            st.markdown("Required Columns")
+            st.markdown("**Required Columns**")
             
             # Get all column names for selection
             all_columns = df.columns.tolist()
@@ -263,21 +246,21 @@ if uploaded_file is not None:
             
             with req_col1:
                 start_date_col = st.selectbox(
-                    "**Start Date** \n*Policy start date*", 
+                    "**Start Date**  \n*Policy start date*", 
                     options=all_columns,
                     key="start_date"
                 )
             
             with req_col2:
                 end_date_col = st.selectbox(
-                    "**End Date** \n*Policy end date*", 
+                    "**End Date**  \n*Policy end date*", 
                     options=all_columns,
                     key="end_date"
                 )
             
             with req_col3:
                 lob_col = st.selectbox(
-                    "**Line of Business** \n*Grouping category*", 
+                    "**Line of Business**  \n*Grouping category*", 
                     options=all_columns,
                     key="lob"
                 )
@@ -293,7 +276,7 @@ if uploaded_file is not None:
             st.stop()
         
         selected_value_cols = st.multiselect(
-            "**Select numeric columns**\n*Choose all columns that contain amounts you want to convert to UPR*",
+            "**Select numeric columns**  \n*Choose all columns that contain amounts you want to convert to UPR*",
             options=numeric_columns,
             default=numeric_columns[:min(4, len(numeric_columns))] if numeric_columns else [],
             help="Examples: Gross Premium, Reinsurance Premium, Commission amounts, etc."
@@ -307,6 +290,26 @@ if uploaded_file is not None:
         if not selected_value_cols:
             st.warning("Please select at least one numeric column for UPR calculation.")
             st.stop()
+
+        # Show mapping summary button
+        st.markdown("---")
+        if st.button("View Column Mapping Summary", use_container_width=False):
+            mapping_data = {
+                'Required Field': ['Start Date', 'End Date', 'Line of Business'],
+                'Your Column': [start_date_col, end_date_col, lob_col],
+                'Description': [
+                    'Policy start date (origin period)',
+                    'Policy end date (development period)',
+                    'Category for grouping results'
+                ]
+            }
+            mapping_df = pd.DataFrame(mapping_data)
+            st.dataframe(mapping_df, use_container_width=True)
+            
+            if selected_value_cols:
+                st.markdown("**Selected numeric columns for UPR calculation:**")
+                st.write(selected_value_cols)
+        st.markdown("---")
 
         # --- Rename columns for internal processing ---
         df_processed = df.rename(columns={
@@ -416,7 +419,7 @@ if uploaded_file is not None:
                 file_name = f"{safe_client}_UPR_Results.xlsx" if safe_client else "UPR_Results.xlsx"
 
                 st.download_button(
-                    label="Download results as Excel",
+                    label="📥 Download results as Excel",
                     data=output,
                     file_name=file_name,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
