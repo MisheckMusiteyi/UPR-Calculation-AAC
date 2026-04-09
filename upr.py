@@ -236,7 +236,7 @@ if uploaded_file is not None:
             df = df.drop(columns=unnamed)
             st.info(f"Dropped {len(unnamed)} unnamed column(s).")
 
-        # Preview - FIXED: Removed expander to avoid arrow overlay issue
+        # Preview
         st.markdown("#### Preview of uploaded data")
         st.dataframe(df.head())
         st.markdown("---")
@@ -301,21 +301,38 @@ if uploaded_file is not None:
 
         st.markdown("---")
 
-        # Numeric columns selection
+        # --- Numeric columns selection - FIXED to show ALL numeric columns ---
         st.markdown("### Select Numeric Columns for UPR Calculation")
         st.markdown("Select which numeric columns (premiums, commissions, etc.) you want to calculate UPR for:")
         
-        numeric_columns = df.select_dtypes(include=[np.number]).columns.tolist()
+        # Get ALL numeric columns - including those that might be stored as objects but contain numbers
+        numeric_columns = []
+        for col in df.columns:
+            # Skip the mapped date and LOB columns
+            if col in [start_date_col, end_date_col, lob_col]:
+                continue
+            # Try to convert to numeric to check if it's a number column
+            try:
+                pd.to_numeric(df[col])
+                numeric_columns.append(col)
+            except (ValueError, TypeError):
+                # If conversion fails, it's not a numeric column
+                pass
+        
+        # Also include columns that are already numeric
+        numeric_columns.extend([col for col in df.select_dtypes(include=[np.number]).columns.tolist() if col not in numeric_columns])
+        numeric_columns = list(set(numeric_columns))  # Remove duplicates
         
         if not numeric_columns:
             st.error("No numeric columns found in your data. Please ensure your file contains numeric columns for UPR calculation.")
             st.stop()
         
+        # Display ALL numeric columns for selection
         selected_value_cols = st.multiselect(
             "Choose the numeric columns you want to convert to UPR:",
             options=numeric_columns,
             default=numeric_columns[:min(4, len(numeric_columns))] if numeric_columns else [],
-            help="Examples: Gross Premium, Reinsurance Premium, Commission amounts, etc."
+            help="Select all columns that contain amounts you want to convert to UPR (e.g., Gross Premium, Reinsurance Premium, Commission amounts, etc.)"
         )
 
         # Validate mappings
@@ -341,9 +358,9 @@ if uploaded_file is not None:
             mapping_df = pd.DataFrame(mapping_data)
             st.dataframe(mapping_df, use_container_width=True)
             
-            #if selected_value_cols:
-                #st.markdown("**Selected numeric columns for UPR calculation:**")
-                #st.write(selected_value_cols)
+            if selected_value_cols:
+                st.markdown("**Selected numeric columns for UPR calculation:**")
+                st.write(selected_value_cols)
 
         # --- Rename columns for internal processing ---
         df_processed = df.rename(columns={
