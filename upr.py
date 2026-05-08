@@ -4,10 +4,11 @@ import pandas as pd
 import numpy as np
 from io import BytesIO
 from datetime import date
+import re  # <-- added for filename sanitization
 
 st.set_page_config(page_title="UPR Calculator", layout="wide")
 
-# ---------- CUSTOM CSS (African Actuarial Consultants theme) ----------
+# ---------- CUSTOM CSS (unchanged) ----------
 st.markdown("""
 <style>
     /* Global */
@@ -217,6 +218,10 @@ uploaded_file = st.file_uploader("Choose a file", type=["csv", "xlsx", "xls"])
 
 if uploaded_file is not None:
     try:
+        # Get original filename (without extension) for traceability
+        original_filename = uploaded_file.name
+        base_filename = re.sub(r'\.[^.]*$', '', original_filename)  # remove extension
+
         # Read file based on extension
         file_extension = uploaded_file.name.split('.')[-1].lower()
         
@@ -465,9 +470,13 @@ if uploaded_file is not None:
                     result.to_excel(writer, index=False, sheet_name='UPR_Results')
                 output.seek(0)
 
-                # Filename with client name
-                safe_client = "".join(c for c in client_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
-                file_name = f"{safe_client}_UPR_Results.xlsx" if safe_client else "UPR_Results.xlsx"
+                # --- Filename: ClientName_OriginalFileName_UPR_Results.xlsx ---
+                safe_client = re.sub(r'[\\/*?:"<>|]', "", client_name).strip()
+                safe_client = safe_client if safe_client else "Client"
+                safe_original = re.sub(r'[\\/*?:"<>|]', "", base_filename).strip()
+                safe_original = safe_original if safe_original else "Data"
+                
+                file_name = f"{safe_client}_{safe_original}_UPR_Results.xlsx"
 
                 st.download_button(
                     label="Download results as Excel",
