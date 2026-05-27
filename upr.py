@@ -232,7 +232,7 @@ st.markdown("""
 st.markdown("""
 <div class="hero">
     <h1>Unearned Premium Reserve (UPR) Calculator</h1>
-    <p>Upload your CSV or Excel file. Map your columns to the required fields below. The app calculates UPR-equivalent reserves grouped by your selected columns (e.g., Line of Business, Currency) using the chosen method (365th, 24th, or 8th).</p>
+    <p>Upload  CSV or Excel Data file. Map the columns to the required fields below. The app calculates UPR-equivalent reserves grouped by the selected columns (e.g., Line of Business, Currency) using the chosen method (365th, 24th, or 8th).</p>
 </div>
 """, unsafe_allow_html=True)
 
