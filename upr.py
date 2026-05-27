@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from io import BytesIO
 from datetime import date
-import re  # <-- added for filename sanitization
+import re
 
 st.set_page_config(page_title="UPR Calculator", layout="wide")
 
@@ -77,7 +77,7 @@ st.markdown("""
         padding: 0 2rem;
     }
     
-    /* Required Column Containers - fixed width consistency */
+    /* Required Column Containers */
     .required-container {
         background-color: #F9F9F9;
         border: 2px solid #D4AF37;
@@ -88,6 +88,7 @@ st.markdown("""
         height: auto;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         width: 100%;
+        margin-bottom: 1rem;
     }
     .required-container h3 {
         color: #D4AF37;
@@ -101,6 +102,22 @@ st.markdown("""
         font-size: 0.85rem;
         margin-bottom: 0;
         line-height: 1.3;
+    }
+    
+    /* Grouping Columns Container */
+    .grouping-container {
+        background-color: #F9F9F9;
+        border: 2px solid #D4AF37;
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    .grouping-container h3 {
+        color: #D4AF37;
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+        font-size: 1.2rem;
+        font-weight: bold;
     }
     
     /* Cards */
@@ -169,6 +186,29 @@ st.markdown("""
         overflow: hidden;
     }
     
+    /* Data Check Containers */
+    .data-check-container {
+        background-color: #E3F2FD;
+        border: 2px solid #2196F3;
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    .data-check-warning {
+        background-color: #FFF3E0;
+        border: 2px solid #FF9800;
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    .data-check-error {
+        background-color: #FFEBEE;
+        border: 2px solid #F44336;
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
     /* Fix for select box container */
     .stSelectbox div[data-baseweb="select"] {
         width: 100%;
@@ -192,7 +232,7 @@ st.markdown("""
 st.markdown("""
 <div class="hero">
     <h1>Unearned Premium Reserve (UPR) Calculator</h1>
-    <p>Upload your CSV or Excel file. Map your columns to the required fields below. The app calculates UPR-equivalent reserves grouped by line of business using the selected method (365th, 24th, or 8th).</p>
+    <p>Upload your CSV or Excel file. Map your columns to the required fields below. The app calculates UPR-equivalent reserves grouped by your selected columns (e.g., Line of Business, Region, Product Type) using the chosen method (365th, 24th, or 8th).</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -208,7 +248,6 @@ with col2:
 with col3:
     method = st.selectbox("UPR Calculation Method", ["365th (exact days)", "24th (half-month)", "8th (half-quarter)"])
 with col4:
-    # empty for spacing
     pass
 
 valuation_date = pd.to_datetime(valuation_date)
@@ -218,11 +257,9 @@ uploaded_file = st.file_uploader("Choose a file", type=["csv", "xlsx", "xls"])
 
 if uploaded_file is not None:
     try:
-        # Get original filename (without extension) for traceability
         original_filename = uploaded_file.name
-        base_filename = re.sub(r'\.[^.]*$', '', original_filename)  # remove extension
+        base_filename = re.sub(r'\.[^.]*$', '', original_filename)
 
-        # Read file based on extension
         file_extension = uploaded_file.name.split('.')[-1].lower()
         
         if file_extension == 'csv':
@@ -235,26 +272,21 @@ if uploaded_file is not None:
         else:
             df = pd.read_excel(uploaded_file)
 
-        # Drop unnamed columns
         unnamed = [c for c in df.columns if c.startswith('Unnamed:')]
         if unnamed:
             df = df.drop(columns=unnamed)
             st.info(f"Dropped {len(unnamed)} unnamed column(s).")
 
-        # Preview
         st.markdown("#### Preview of uploaded data")
         st.dataframe(df.head())
         st.markdown("---")
 
-        # --- Column Mapping Section with Visual Containers ---
+        # --- Column Mapping Section ---
         st.markdown("### Map Your Columns to Required Fields")
-        st.markdown("The calculator requires the following columns. For each required column, select the corresponding column from your uploaded data:")
-
-        # Get all column names for selection
         all_columns = df.columns.tolist()
         
-        # Create three equal-width columns for the required mappings
-        req_col1, req_col2, req_col3 = st.columns(3)
+        # Required columns: Start_Date, End_Date, and at least one grouping column
+        req_col1, req_col2 = st.columns(2)
         
         with req_col1:
             st.markdown("""
@@ -263,14 +295,8 @@ if uploaded_file is not None:
                 <p>The date when the policy starts (origin period)</p>
             </div>
             """, unsafe_allow_html=True)
-            start_date_col = st.selectbox(
-                "Select your Start Date column",
-                options=[""] + all_columns,
-                key="start_date",
-                label_visibility="collapsed"
-            )
-            if start_date_col == "":
-                start_date_col = None
+            start_date_col = st.selectbox("Select your Start Date column", options=[""] + all_columns, key="start_date", label_visibility="collapsed")
+            if start_date_col == "": start_date_col = None
         
         with req_col2:
             st.markdown("""
@@ -279,147 +305,192 @@ if uploaded_file is not None:
                 <p>The date when the policy ends (development period)</p>
             </div>
             """, unsafe_allow_html=True)
-            end_date_col = st.selectbox(
-                "Select your End Date column",
-                options=[""] + all_columns,
-                key="end_date",
-                label_visibility="collapsed"
-            )
-            if end_date_col == "":
-                end_date_col = None
+            end_date_col = st.selectbox("Select your End Date column", options=[""] + all_columns, key="end_date", label_visibility="collapsed")
+            if end_date_col == "": end_date_col = None
+
+        st.markdown("---")
         
-        with req_col3:
-            st.markdown("""
-            <div class="required-container">
-                <h3>Line_of_Business</h3>
-                <p>The category/segment for grouping results (e.g., Motor, Property, Agriculture)</p>
-            </div>
-            """, unsafe_allow_html=True)
-            lob_col = st.selectbox(
-                "Select your Line of Business column",
-                options=[""] + all_columns,
-                key="lob",
-                label_visibility="collapsed"
-            )
-            if lob_col == "":
-                lob_col = None
+        # --- Grouping Columns Selection (NEW) ---
+        st.markdown("""
+        <div class="grouping-container">
+            <h3>Grouping Columns</h3>
+            <p>Select the columns you want to group by (e.g., Line_of_Business, Currency). Results will be aggregated by these columns.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Exclude the date columns from grouping options
+        grouping_options = [col for col in all_columns if col not in [start_date_col, end_date_col]]
+        grouping_cols = st.multiselect(
+            "Choose columns to group results by (at least one required):",
+            options=grouping_options,
+            default=[grouping_options[0]] if grouping_options else [],
+            help="Select one or more columns. The UPR results will be aggregated by these columns."
+        )
+        
+        if not grouping_cols:
+            st.error("Please select at least one grouping column (e.g., Line_of_Business).")
+            st.stop()
 
         st.markdown("---")
 
-        # --- Numeric columns selection - FIXED to show ALL numeric columns ---
+        # --- Numeric columns selection ---
         st.markdown("### Select Numeric Columns for UPR Calculation")
-        st.markdown("Select which numeric columns (premiums, commissions, etc.) you want to calculate UPR for:")
         
-        # Get ALL numeric columns - including those that might be stored as objects but contain numbers
         numeric_columns = []
         for col in df.columns:
-            # Skip the mapped date and LOB columns
-            if col in [start_date_col, end_date_col, lob_col]:
+            if col in [start_date_col, end_date_col] + grouping_cols:
                 continue
-            # Try to convert to numeric to check if it's a number column
             try:
                 pd.to_numeric(df[col])
                 numeric_columns.append(col)
             except (ValueError, TypeError):
-                # If conversion fails, it's not a numeric column
                 pass
         
-        # Also include columns that are already numeric
         numeric_columns.extend([col for col in df.select_dtypes(include=[np.number]).columns.tolist() if col not in numeric_columns])
-        numeric_columns = list(set(numeric_columns))  # Remove duplicates
+        numeric_columns = list(set(numeric_columns))
         
         if not numeric_columns:
-            st.error("No numeric columns found in your data. Please ensure your file contains numeric columns for UPR calculation.")
+            st.error("No numeric columns found.")
             st.stop()
         
-        # Display ALL numeric columns for selection
         selected_value_cols = st.multiselect(
             "Choose the numeric columns you want to convert to UPR:",
             options=numeric_columns,
-            default=numeric_columns[:min(4, len(numeric_columns))] if numeric_columns else [],
-            help="Select all columns that contain amounts you want to convert to UPR (e.g., Gross Premium, Reinsurance Premium, Commission amounts, etc.)"
+            default=numeric_columns[:min(4, len(numeric_columns))] if numeric_columns else []
         )
 
-        # Validate mappings
-        if not start_date_col or not end_date_col or not lob_col:
-            st.error("Please map all required columns (Start_Date, End_Date, Line_of_Business).")
+        if not start_date_col or not end_date_col:
+            st.error("Please map all required date columns.")
             st.stop()
         
         if not selected_value_cols:
-            st.warning("Please select at least one numeric column for UPR calculation.")
+            st.warning("Please select at least one numeric column.")
             st.stop()
 
-        # Show mapping summary button
-        if st.button("View Column Mapping Summary", use_container_width=False):
-            mapping_data = {
-                'Required Field': ['Start_Date', 'End_Date', 'Line_of_Business'],
-                'Your Column': [start_date_col, end_date_col, lob_col],
-                'Description': [
-                    'Policy start date (origin period)',
-                    'Policy end date (development period)',
-                    'Category for grouping results'
-                ]
-            }
-            mapping_df = pd.DataFrame(mapping_data)
-            st.dataframe(mapping_df, use_container_width=True)
-            
-            if selected_value_cols:
-                st.markdown("**Selected numeric columns for UPR calculation:**")
-                st.write(selected_value_cols)
-
-        # --- Rename columns for internal processing ---
-        df_processed = df.rename(columns={
+        # --- DATA CHECKS SECTION ---
+        st.markdown("### Data Quality Checks")
+        st.info("The following checks identify potential issues in your data. Please review and correct them before proceeding with the calculation.")
+        
+        df_check = df.copy()
+        df_check = df_check.rename(columns={
             start_date_col: 'Start_Date',
             end_date_col: 'End_Date',
-            lob_col: 'Line_of_business'
         })
-
-        # Keep original numeric column names
-        original_value_cols = selected_value_cols
-
-        # --- Date parsing with error reporting ---
-        orig_start = df_processed['Start_Date'].copy()
-        orig_end = df_processed['End_Date'].copy()
-
-        df_processed['Start_Date'] = pd.to_datetime(df_processed['Start_Date'], errors='coerce')
-        df_processed['End_Date'] = pd.to_datetime(df_processed['End_Date'], errors='coerce')
-
-        bad_start = orig_start[df_processed['Start_Date'].isna() & orig_start.notna()]
-        bad_end = orig_end[df_processed['End_Date'].isna() & orig_end.notna()]
-
-        if not bad_start.empty or not bad_end.empty:
-            st.error("Some date values could not be parsed. Please check your data.")
-            if not bad_start.empty:
-                st.write("**Invalid Start_Date values (first 10):**")
-                st.write(bad_start.head(10).tolist())
-            if not bad_end.empty:
-                st.write("**Invalid End_Date values (first 10):**")
-                st.write(bad_end.head(10).tolist())
-            st.stop()
-
-        # Calculate Duration in days
-        df_processed["Duration"] = (df_processed["End_Date"] - df_processed["Start_Date"]).dt.days
         
-        # Remove rows with invalid duration
-        if (df_processed["Duration"] <= 0).any():
-            st.warning("Some policies have zero or negative duration. They will be excluded.")
-            df_processed = df_processed[df_processed["Duration"] > 0]
+        # Also rename grouping columns to keep original names (no renaming needed)
+        # Keep original column names for grouping
+        
+        df_check['Start_Date'] = pd.to_datetime(df_check['Start_Date'], errors='coerce')
+        df_check['End_Date'] = pd.to_datetime(df_check['End_Date'], errors='coerce')
+        
+        all_selected_cols = ['Start_Date', 'End_Date'] + grouping_cols + selected_value_cols
+        
+        has_critical_errors = False
+        error_messages = []
+        warning_messages = []
+        
+        # 1. Missing Values Check
+        st.markdown("#### 1. Missing Values Check")
+        missing_summary = {}
+        for col in all_selected_cols:
+            if col in df_check.columns:
+                missing_count = df_check[col].isna().sum()
+                missing_summary[col] = missing_count
+                if missing_count > 0:
+                    warning_messages.append(f"Column '{col}' has {missing_count} missing value(s).")
+        
+        missing_df = pd.DataFrame(list(missing_summary.items()), columns=['Column', 'Missing Values'])
+        st.dataframe(missing_df, use_container_width=True)
+        
+        if sum(missing_summary.values()) == 0:
+            st.success("✅ No missing values found.")
+        else:
+            st.warning(f"⚠️ Total missing values: {sum(missing_summary.values())}")
+        
+        # 2. Date Reasonability Check
+        st.markdown("#### 2. Date Reasonability Check")
+        
+        valid_dates = df_check.dropna(subset=['Start_Date', 'End_Date'])
+        invalid_dates = valid_dates[valid_dates['End_Date'] <= valid_dates['Start_Date']]
+        
+        if len(invalid_dates) > 0:
+            has_critical_errors = True
+            error_messages.append(f"Found {len(invalid_dates)} row(s) where End_Date is not after Start_Date.")
+            st.error(f"❌ {len(invalid_dates)} row(s) have End_Date <= Start_Date.")
+            with st.expander("View invalid date rows (first 10)"):
+                st.dataframe(invalid_dates[['Start_Date', 'End_Date']].head(10))
+        else:
+            st.success("✅ All valid dates have End_Date after Start_Date.")
+        
+        # 3. Duplicate Entry Check
+        st.markdown("#### 3. Duplicate Entry Check")
+        
+        duplicate_rows = df_check[df_check.duplicated()]
+        if len(duplicate_rows) > 0:
+            warning_messages.append(f"Found {len(duplicate_rows)} exact duplicate row(s).")
+            st.warning(f"⚠️ {len(duplicate_rows)} exact duplicate row(s) found.")
+            with st.expander("View duplicate rows (first 10)"):
+                st.dataframe(duplicate_rows.head(10))
+        else:
+            st.success("✅ No exact duplicate rows found.")
+        
+        # --- Summary of Data Checks ---
+        st.markdown("#### Data Quality Summary")
+        
+        if error_messages:
+            st.markdown('<div class="data-check-error">', unsafe_allow_html=True)
+            st.markdown("**❌ Critical Issues Found - Please fix these before continuing:**")
+            for err in error_messages:
+                st.write(f"• {err}")
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        if warning_messages:
+            st.markdown('<div class="data-check-warning">', unsafe_allow_html=True)
+            st.markdown("**⚠️ Warnings - Recommended to review:**")
+            for warn in warning_messages:
+                st.write(f"• {warn}")
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        if not error_messages and not warning_messages:
+            st.markdown('<div class="data-check-container">', unsafe_allow_html=True)
+            st.markdown("**✅ All data quality checks passed!**")
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        if has_critical_errors:
+            st.error("❌ Calculation cannot proceed due to critical data issues. Please fix the issues above and re-upload your file.")
+            st.stop()
+        
+        # --- Prepare data for calculation ---
+        df_processed = df_check.copy()
+        
+        # Remove rows with invalid dates
+        df_processed = df_processed.dropna(subset=['Start_Date', 'End_Date'])
+        df_processed = df_processed[df_processed['End_Date'] > df_processed['Start_Date']]
+        
+        original_value_cols = selected_value_cols
+        
+        for col in original_value_cols:
+            if col in df_processed.columns:
+                df_processed[col] = pd.to_numeric(df_processed[col], errors='coerce')
+        
+        df_processed["Duration"] = (df_processed["End_Date"] - df_processed["Start_Date"]).dt.days
+        df_processed = df_processed[df_processed["Duration"] > 0]
 
         if df_processed.empty:
-            st.error("No valid policies remaining after filtering. Please check your data.")
+            st.error("No valid policies remaining after data cleaning.")
             st.stop()
 
         # --- CALCULATE BUTTON ---
         if st.button("Calculate UPR", use_container_width=True):
             with st.spinner("Calculating UPR..."):
-                # Define conditions
                 conditions = [
                     valuation_date < df_processed["Start_Date"],
                     valuation_date > df_processed["End_Date"],
                     (valuation_date <= df_processed["End_Date"]) & (valuation_date >= df_processed["Start_Date"])
                 ]
 
-                # Calculate unearned portion based on selected method
                 if method == "365th (exact days)":
                     total = df_processed["Duration"]
                     remaining = (df_processed["End_Date"] - valuation_date).dt.days
@@ -440,37 +511,32 @@ if uploaded_file is not None:
                     choices = [1, 0, remaining / total]
                     df_processed["Unearned_portion"] = np.select(conditions, choices, default=np.nan)
 
-                # Calculate UPR for each selected column
                 for col in original_value_cols:
                     df_processed[f"{col}_UPR"] = df_processed["Unearned_portion"] * df_processed[col]
 
-                # Aggregate by Line of Business
+                # Group by the selected grouping columns
                 upr_columns = [f"{col}_UPR" for col in original_value_cols]
-                result = df_processed.groupby('Line_of_business')[upr_columns].sum().reset_index()
+                result = df_processed.groupby(grouping_cols)[upr_columns].sum().reset_index()
                 
-                # Rename result columns
-                result.columns = ['Line_of_business'] + [col.replace('_UPR', '') for col in upr_columns]
+                # Rename result columns (remove _UPR suffix)
+                result.columns = grouping_cols + [col.replace('_UPR', '') for col in upr_columns]
 
-                # Display results
                 st.markdown('<div class="card">', unsafe_allow_html=True)
-                st.subheader("UPR Results by Line of Business")
+                st.subheader("UPR Results by " + ", ".join(grouping_cols))
                 
-                # Format for display
                 display_result = result.copy()
                 for col in display_result.columns:
-                    if col != 'Line_of_business':
+                    if col not in grouping_cols:
                         display_result[col] = display_result[col].apply(lambda x: f"{x:,.2f}" if pd.notna(x) else "N/A")
                 
                 st.dataframe(display_result, use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
 
-                # Prepare Excel download
                 output = BytesIO()
                 with pd.ExcelWriter(output, engine='openpyxl') as writer:
                     result.to_excel(writer, index=False, sheet_name='UPR_Results')
                 output.seek(0)
 
-                # --- Filename: ClientName_OriginalFileName_UPR_Results.xlsx ---
                 safe_client = re.sub(r'[\\/*?:"<>|]', "", client_name).strip()
                 safe_client = safe_client if safe_client else "Client"
                 safe_original = re.sub(r'[\\/*?:"<>|]', "", base_filename).strip()
